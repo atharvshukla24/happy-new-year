@@ -8,7 +8,7 @@
   body {
     margin: 0;
     overflow: hidden;
-    font-family: "Poppins", Arial, sans-serif;
+    font-family: Arial, sans-serif;
     background: linear-gradient(180deg,#0f2027,#203a43,#2c5364);
     background-size: 400% 400%;
     animation: bgMove 12s ease infinite;
@@ -20,74 +20,51 @@
     100% { background-position: 0% 50%; }
   }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(2px 2px at 20% 30%, white, transparent),
-      radial-gradient(1px 1px at 70% 40%, white, transparent),
-      radial-gradient(2px 2px at 50% 80%, white, transparent);
-    opacity: .6;
-    pointer-events: none;
-  }
-
   .center-text {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    text-align: center;
-    z-index: 10;
     font-size: clamp(2.2rem, 6vw, 3.5rem);
-    text-shadow:
-      2px 2px 5px #000,
-      0 0 20px gold,
-      0 0 40px orange;
+    z-index: 10;
+    text-shadow: 2px 2px 6px #000, 0 0 25px gold;
   }
 
   .bottom-name {
     position: fixed;
-    bottom: 26px;
+    bottom: 24px;
     width: 100%;
     text-align: center;
     color: white;
-    z-index: 10;
     font-size: clamp(1.2rem, 4.5vw, 1.5rem);
-    text-shadow: 2px 2px 5px #000;
+    z-index: 10;
+    text-shadow: 2px 2px 6px #000;
   }
 
   canvas {
     position: fixed;
     inset: 0;
-    z-index: 2;
+    z-index: 1;
   }
 </style>
 </head>
 
 <body>
 
-<div class="center-text" id="wishText">
-  🎉 Happy New Year 2026 🎉
-</div>
-
-<div class="bottom-name">
-  — From Atharv Shukla
-</div>
+<div class="center-text" id="wishText">🎉 Happy New Year 2026 🎉</div>
+<div class="bottom-name">— From Atharv Shukla</div>
 
 <canvas id="canvas"></canvas>
 
 <script>
-/* ===== LINK BASED CUSTOM NAME ===== */
-const params = new URLSearchParams(location.search);
-const name = params.get("name");
-if (name) {
-  document.getElementById("wishText").innerHTML =
-    `🎉 Happy New Year ${name} 🎉`;
-}
+/* ===== CUSTOM NAME FROM LINK ===== */
+const p = new URLSearchParams(location.search);
+const n = p.get("name");
+if (n) document.getElementById("wishText").innerHTML =
+  `🎉 Happy New Year ${n} 🎉`;
 
-/* ===== REAL FIREWORKS ENGINE ===== */
+/* ===== CANVAS SETUP ===== */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -98,8 +75,36 @@ function resize() {
 resize();
 addEventListener("resize", resize);
 
-const gravity = 0.05;
+/* ===== ROCKET + PARTICLES ===== */
+const gravity = 0.06;
+let rockets = [];
 let particles = [];
+
+class Rocket {
+  constructor() {
+    this.x = Math.random() * canvas.width;
+    this.y = canvas.height;
+    this.vy = Math.random() * -7 - 9;
+    this.explodeY = Math.random() * canvas.height / 2 + 80;
+  }
+  update() {
+    this.y += this.vy;
+    this.vy += gravity * 0.15;
+    if (this.y <= this.explodeY) {
+      explode(this.x, this.y);
+      return false;
+    }
+    return true;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x, this.y + 15);
+    ctx.strokeStyle = "rgba(255,200,100,0.9)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
 
 class Particle {
   constructor(x, y, angle, speed, color) {
@@ -108,68 +113,71 @@ class Particle {
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.alpha = 1;
-    this.decay = Math.random() * 0.015 + 0.01;
     this.color = color;
-    this.size = 2.2;
-    this.prevX = x;
-    this.prevY = y;
   }
-
   update() {
-    this.prevX = this.x;
-    this.prevY = this.y;
-
     this.vy += gravity;
     this.x += this.vx;
     this.y += this.vy;
-    this.alpha -= this.decay;
+    this.alpha -= 0.015;
   }
-
   draw() {
     ctx.beginPath();
-    ctx.moveTo(this.prevX, this.prevY);
-    ctx.lineTo(this.x, this.y);
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x - this.vx, this.y - this.vy);
     ctx.strokeStyle = `rgba(${this.color},${this.alpha})`;
-    ctx.lineWidth = this.size;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 }
 
 function explode(x, y) {
-  const hue = Math.floor(Math.random() * 360);
-  for (let i = 0; i < 120; i++) {
+  const colors = [
+    "255,80,80",
+    "255,200,0",
+    "80,200,255",
+    "200,80,255"
+  ];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+
+  for (let i = 0; i < 140; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * 4 + 2;
-    const color = `255,${Math.floor(Math.random()*200)},0`;
     particles.push(new Particle(x, y, angle, speed, color));
   }
 }
 
+/* ===== ANIMATION LOOP ===== */
 function animate() {
-  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  particles.forEach((p, i) => {
+  rockets = rockets.filter(r => {
+    r.draw();
+    return r.update();
+  });
+
+  particles = particles.filter(p => {
     p.update();
     p.draw();
-    if (p.alpha <= 0) particles.splice(i, 1);
+    return p.alpha > 0;
   });
 
   requestAnimationFrame(animate);
 }
 
+/* ===== LAUNCH ROCKETS ===== */
 setInterval(() => {
-  explode(
-    Math.random() * (canvas.width - 200) + 100,
-    Math.random() * canvas.height / 2 + 50
-  );
-}, 550);
+  rockets.push(new Rocket());
+}, 700);
 
 animate();
 </script>
 
 </body>
 </html>
+
+
 
 
 
